@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useRole } from "../_lib/role";
 
@@ -22,18 +23,33 @@ const menuByRole = {
 
 export default function SideMenu() {
   const { role } = useRole();
+  const pathname = usePathname();
   const items = menuByRole[role] ?? [];
+
   return (
     <motion.aside
       initial={{ x: -12, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="w-64 shrink-0 border-r border-white/10 p-3 hidden md:block"
+      className="w-64 shrink-0 border-r border-emerald-100/80 bg-white/70 backdrop-blur sticky top-0 h-[100dvh] hidden md:block"
     >
-      <div className="text-sm uppercase opacity-60 mb-2">Меню</div>
-      <nav className="grid gap-2">
-        {items.map(i => (
-          <Link key={i.href} className="rounded-xl px-3 py-2 hover:bg-white/5" href={i.href}>{i.label}</Link>
-        ))}
+      <div className="px-4 py-3 text-xs tracking-wide text-emerald-700/80 font-semibold">МЕНЮ</div>
+      <nav className="grid">
+        {items.map(i => {
+          const active = pathname === i.href;
+          return (
+            <Link
+              key={i.href}
+              href={i.href}
+              className={[
+                "px-4 py-2.5",
+                "hover:bg-emerald-50",
+                active ? "bg-emerald-100/70 text-emerald-800 font-medium border-l-4 border-emerald-500" : "text-slate-700"
+              ].join(" ")}
+            >
+              {i.label}
+            </Link>
+          );
+        })}
       </nav>
     </motion.aside>
   );

@@ -1,23 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 
 export function useTelegram() {
   const tg = useMemo(() => (typeof window !== "undefined"
     ? (window as any).Telegram?.WebApp
-    : undefined),
-  []);
+    : undefined), []);
 
   useEffect(() => {
     if (!tg) return;
     tg.ready();
-    tg.expand(); // разворачиваем на всю высоту webview
-    tg.disableVerticalSwipe?.(); // меньше «отскоков» при скролле
-    // цвета под тему Telegram
-    const tp = tg.themeParams || {};
-    tg.setHeaderColor?.(tp.bg_color ? "secondary_bg_color" : "#0f172a");
-    tg.setBackgroundColor?.(tp.bg_color || "#0b1220");
+    tg.expand();                          // максимум высоты в webview
+    tg.disableVerticalSwipe?.();
+    tg.setHeaderColor?.("secondary_bg_color");
+    tg.setBackgroundColor?.("#ffffff");
   }, [tg]);
 
-  return tg;
+  const expand = useCallback(() => {
+    tg?.expand(); // официально это и есть «full screen» для WebApp
+    // Дополнительно растягиваем наш контейнер:
+    document.documentElement.style.setProperty("--vh", window.innerHeight + "px");
+  }, [tg]);
+
+  return { tg, expand };
 }
