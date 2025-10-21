@@ -1,9 +1,13 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+html, body, #__next { height: 100%; }
+body { overscroll-behavior: none; }
+@supports (height: 100dvh) {
+  .h-dvh { height: 100dvh; }
+  .min-h-\[100dvh] 
+  { min-height: 100dvh; }
 }
+
 
 @theme inline {
   --color-background: var(--background);
@@ -24,3 +28,5 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
