@@ -39,6 +39,16 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+html, body, #root { height: 100%; }
+body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+
+@keyframes bubble {
+  0% { transform: translateY(0px) translateX(0px) scale(1); }
+  50% { transform: translateY(-30px) translateX(10px) scale(1.03); }
+  100% { transform: translateY(0px) translateX(0px) scale(1); }
+}
+.animate-bubble { animation-name: bubble; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+
 body {
   min-height: 100vh;
   margin: 0;
