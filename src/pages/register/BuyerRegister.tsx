@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/rules-of-hooks */
-// src/pages/register/BuyerRegister.tsx
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useRegister } from "@/hooks/queries/auth"
+import { useRegister, type SellerType } from "@/hooks/queries/auth"
 import { verifiedPhone } from "@/hooks/queries/auth"
 import { format8 } from "@/lib/phone"
 import BubblesBackground from "@/components/BubblesBackground"
@@ -12,73 +12,308 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useNavigate } from "react-router-dom"
 
-const schema = z.object({
-  full_name: z.string().min(2),
-  email: z.string().email(),
-  phone: z.string(),
+const d = (len: number, label: string) => z.string().regex(new RegExp(`^\\d{${len}}$`), `${label}: ${len} цифр`)
+const phoneRu = z.string().regex(/^8\d{10}$/, "Телефон: 8XXXXXXXXXX")
+
+const baseSchema = z.object({
+  phone: phoneRu,
+  organization_name: z.string().min(2),
+  legal_address: z.string().min(5),
+  bank_account: d(20, "Расчётный счёт"),
+  correspondent_account: d(20, "Корр. счёт"),
+  bik: d(9, "БИК"),
+  bank_name: z.string().min(2),
 })
 
-export default function BuyerRegister() {
+const ipSchema = z.object({ seller_type: z.literal("ip"), inn: d(12, "ИНН"), ogrn: d(15, "ОГРНИП") }).merge(baseSchema)
+const oooSchema = z.object({ seller_type: z.literal("ooo"), inn: d(10, "ИНН"), kpp: d(9, "КПП") }).merge(baseSchema)
+const selfSchema = z.object({ seller_type: z.literal("self_employed"), inn: d(12, "ИНН") }).merge(baseSchema)
+const sellerSchema = z.discriminatedUnion("seller_type", [ipSchema, oooSchema, selfSchema])
+type FormData = z.infer<typeof sellerSchema>
+
+export default function SellerRegister() {
   const nav = useNavigate()
   const registerUser = useRegister()
-  const { control, handleSubmit, setValue } = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
-    defaultValues: { full_name: "", email: "", phone: verifiedPhone.get() || "8" },
+  const [type, setType] = useState<SellerType>("ip")
+
+  const { control, handleSubmit, setValue, formState, watch } = useForm<FormData>({
+    resolver: zodResolver(sellerSchema),
+    defaultValues: {
+      seller_type: type,
+      phone: verifiedPhone.get() || "8",
+      organization_name: "",
+      inn: "",
+      ogrn: "",
+      kpp: "",
+      legal_address: "",
+      bank_account: "",
+      correspondent_account: "",
+      bik: "",
+      bank_name: "",
+    } as FormData,
+    mode: "onChange",
   })
 
-  const onSubmit = async (d: z.infer<typeof schema>) => {
-    await registerUser.mutateAsync({
-      role: "buyer",
-      phone: d.phone,
-      full_name: d.full_name,
-      email: d.email,
-      terms_accepted: true,
-    })
-    nav("/buyer", { replace: true })
+  useEffect(() => {
+    setValue("seller_type", type as any, { shouldValidate: true })
+    if (type === "ip") {
+      setValue("kpp", "", { shouldValidate: true })
+    } else if (type === "ooo") {
+      setValue("ogrn", "", { shouldValidate: true })
+    } else {
+      setValue("ogrn", "", { shouldValidate: true })
+      setValue("kpp", "", { shouldValidate: true })
+    }
+  }, [type, setValue])
+
+  const onSubmit = async (d: FormData) => {
+    if (d.seller_type === "ip") {
+      await registerUser.mutateAsync({
+        role: "seller",
+        phone: d.phone,
+        seller_type: "ip",
+        organization_name: d.organization_name,
+        inn: d.inn,
+        ogrn: (d as any).ogrn,
+        legal_address: d.legal_address,
+        bank_account: d.bank_account,
+        correspondent_account: d.correspondent_account,
+        bik: d.bik,
+        bank_name: d.bank_name,
+        offer_accepted: true,
+        terms_accepted: true,
+      })
+    } else if (d.seller_type === "ooo") {
+      await registerUser.mutateAsync({
+        role: "seller",
+        phone: d.phone,
+        seller_type: "ooo",
+        organization_name: d.organization_name,
+        inn: d.inn,
+        kpp: (d as any).kpp,
+        legal_address: d.legal_address,
+        bank_account: d.bank_account,
+        correspondent_account: d.correspondent_account,
+        bik: d.bik,
+        bank_name: d.bank_name,
+        offer_accepted: true,
+        terms_accepted: true,
+      })
+    } else {
+      await registerUser.mutateAsync({
+        role: "seller",
+        phone: d.phone,
+        seller_type: "self_employed",
+        organization_name: d.organization_name,
+        inn: d.inn,
+        legal_address: d.legal_address,
+        bank_account: d.bank_account,
+        correspondent_account: d.correspondent_account,
+        bik: d.bik,
+        bank_name: d.bank_name,
+        offer_accepted: true,
+        terms_accepted: true,
+      })
+    }
+    nav("/seller/onboarding", { replace: true })
   }
 
+  const err = formState.errors as any
+  const t = watch("seller_type")
+
   return (
-    <div className="relative min-h-screen" style={{ minHeight: "var(--tg-viewport-stable-height, 100vh)" }}>
+    <div className="fixed inset-0">
       <BubblesBackground />
-      <div className="mx-auto flex min-h-screen max-w-md items-center justify-center p-4">
-        <Card className="w-full shadow-xl">
+      <div
+        className="grid h-full place-items-center px-4"
+        style={{ height: "var(--tg-viewport-stable-height, 100svh)" }}
+      >
+        <Card className="w-full max-w-[720px] shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Регистрация покупателя</CardTitle>
-            <CardDescription>Заполните данные</CardDescription>
+            <CardTitle className="text-3xl md:text-4xl">Регистрация продавца</CardTitle>
+            <CardDescription className="text-lg">Выберите форму и заполните данные</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-              <div className="space-y-2">
-                <Label>ФИО</Label>
-                <Controller control={control} name="full_name" render={({ field }) => <Input {...field} placeholder="Иванов Иван" />} />
+        <CardContent>
+          <div className="mb-6">
+            <RadioGroup value={type} onValueChange={(v) => setType(v as SellerType)} className="grid grid-cols-3 gap-3">
+              <div className="flex items-center gap-3 rounded-2xl border p-4">
+                <RadioGroupItem value="ooo" id="ooo" className="h-5 w-5" />
+                <Label htmlFor="ooo" className="text-lg">ООО</Label>
               </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Controller control={control} name="email" render={({ field }) => <Input type="email" {...field} placeholder="you@example.com" />} />
+              <div className="flex items-center gap-3 rounded-2xl border p-4">
+                <RadioGroupItem value="ip" id="ip" className="h-5 w-5" />
+                <Label htmlFor="ip" className="text-lg">ИП</Label>
               </div>
-              <div className="space-y-2">
-                <Label>Телефон</Label>
-                <Controller
-                  control={control}
-                  name="phone"
-                  render={({ field }) => (
+              <div className="flex items-center gap-3 rounded-2xl border p-4">
+                <RadioGroupItem value="self_employed" id="self" className="h-5 w-5" />
+                <Label htmlFor="self" className="text-lg">Самозанятость</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <form className="grid gap-5 md:grid-cols-2" onSubmit={handleSubmit(onSubmit)}>
+            <div className="space-y-2 md:col-span-2">
+              <Label className="text-base">Телефон</Label>
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field }) => (
+                  <>
                     <Input
                       {...field}
+                      className="h-14 rounded-2xl text-lg"
                       value={useMemo(() => format8(field.value).formatted, [field.value])}
-                      onChange={(e) => setValue("phone", format8(e.target.value).digits)}
+                      onChange={(e) => setValue("phone", format8(e.target.value).digits, { shouldValidate: true })}
                       placeholder="8-900-123-45-67"
                       inputMode="tel"
+                      aria-invalid={!!err.phone}
                     />
+                    {err.phone?.message && <div className="text-sm text-red-600">{err.phone.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label className="text-base">{t === "ip" ? "Наименование ИП" : t === "ooo" ? "Наименование ООО" : "ФИО"}</Label>
+              <Controller
+                control={control}
+                name="organization_name"
+                render={({ field }) => (
+                  <>
+                    <Input {...field} className="h-14 rounded-2xl text-lg" aria-invalid={!!err.organization_name} />
+                    {err.organization_name?.message && <div className="text-sm text-red-600">{err.organization_name.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-base">ИНН</Label>
+              <Controller
+                control={control}
+                name="inn"
+                render={({ field }) => (
+                  <>
+                    <Input {...field} className="h-14 rounded-2xl text-lg" inputMode="numeric" aria-invalid={!!err.inn} />
+                    {err.inn?.message && <div className="text-sm text-red-600">{err.inn.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            {t === "ip" && (
+              <div className="space-y-2">
+                <Label className="text-base">ОГРНИП</Label>
+                <Controller
+                  control={control}
+                  name="ogrn"
+                  render={({ field }) => (
+                    <>
+                      <Input {...field} className="h-14 rounded-2xl text-lg" inputMode="numeric" aria-invalid={!!err.ogrn} />
+                      {err.ogrn?.message && <div className="text-sm text-red-600">{err.ogrn.message}</div>}
+                    </>
                   )}
                 />
               </div>
-              <Button className="h-11 w-full rounded-xl bg-gradient-to-r from-emerald-500 to-violet-500 text-white" type="submit">
+            )}
+
+            {t === "ooo" && (
+              <div className="space-y-2">
+                <Label className="text-base">КПП</Label>
+                <Controller
+                  control={control}
+                  name="kpp"
+                  render={({ field }) => (
+                    <>
+                      <Input {...field} className="h-14 rounded-2xl text-lg" inputMode="numeric" aria-invalid={!!err.kpp} />
+                      {err.kpp?.message && <div className="text-sm text-red-600">{err.kpp.message}</div>}
+                    </>
+                  )}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2 md:col-span-2">
+              <Label className="text-base">Юридический адрес</Label>
+              <Controller
+                control={control}
+                name="legal_address"
+                render={({ field }) => (
+                  <>
+                    <Input {...field} className="h-14 rounded-2xl text-lg" aria-invalid={!!err.legal_address} />
+                    {err.legal_address?.message && <div className="text-sm text-red-600">{err.legal_address.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-base">Расчётный счёт</Label>
+              <Controller
+                control={control}
+                name="bank_account"
+                render={({ field }) => (
+                  <>
+                    <Input {...field} className="h-14 rounded-2xl text-lg" inputMode="numeric" aria-invalid={!!err.bank_account} />
+                    {err.bank_account?.message && <div className="text-sm text-red-600">{err.bank_account.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-base">Корр. счёт</Label>
+              <Controller
+                control={control}
+                name="correspondent_account"
+                render={({ field }) => (
+                  <>
+                    <Input {...field} className="h-14 rounded-2xl text-lg" inputMode="numeric" aria-invalid={!!err.correspondent_account} />
+                    {err.correspondent_account?.message && <div className="text-sm text-red-600">{err.correspondent_account.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-base">БИК банка</Label>
+              <Controller
+                control={control}
+                name="bik"
+                render={({ field }) => (
+                  <>
+                    <Input {...field} className="h-14 rounded-2xl text-lg" inputMode="numeric" aria-invalid={!!err.bik} />
+                    {err.bik?.message && <div className="text-sm text-red-600">{err.bik.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-base">Наименование банка</Label>
+              <Controller
+                control={control}
+                name="bank_name"
+                render={({ field }) => (
+                  <>
+                    <Input {...field} className="h-14 rounded-2xl text-lg" aria-invalid={!!err.bank_name} />
+                    {err.bank_name?.message && <div className="text-sm text-red-600">{err.bank_name.message}</div>}
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Button className="h-14 w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-violet-500 text-lg text-white" type="submit">
                 Завершить регистрацию
               </Button>
-            </form>
-          </CardContent>
+            </div>
+          </form>
+        </CardContent>
         </Card>
       </div>
     </div>

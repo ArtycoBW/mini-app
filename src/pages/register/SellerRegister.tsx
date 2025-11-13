@@ -15,36 +15,22 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useNavigate } from "react-router-dom"
 
-const d = (len: number, label: string) => z.string().regex(new RegExp(`^\\d{${len}}$`), `${label}: должно быть ${len} цифр`)
-const phoneRu = z.string().regex(/^8\d{10}$/, "Телефон: формат 8XXXXXXXXXX")
+const d = (len: number, label: string) => z.string().regex(new RegExp(`^\\d{${len}}$`), `${label}: ${len} цифр`)
+const phoneRu = z.string().regex(/^8\d{10}$/, "Телефон: 8XXXXXXXXXX")
 
 const baseSchema = z.object({
   phone: phoneRu,
-  organization_name: z.string().min(2, "Укажите наименование"),
-  legal_address: z.string().min(5, "Укажите юридический адрес"),
+  organization_name: z.string().min(2),
+  legal_address: z.string().min(5),
   bank_account: d(20, "Расчётный счёт"),
   correspondent_account: d(20, "Корр. счёт"),
   bik: d(9, "БИК"),
-  bank_name: z.string().min(2, "Укажите наименование банка"),
+  bank_name: z.string().min(2),
 })
 
-const ipSchema = z.object({
-  seller_type: z.literal("ip"),
-  inn: d(12, "ИНН"),
-  ogrn: d(15, "ОГРНИП"),
-}).merge(baseSchema)
-
-const oooSchema = z.object({
-  seller_type: z.literal("ooo"),
-  inn: d(10, "ИНН"),
-  kpp: d(9, "КПП"),
-}).merge(baseSchema)
-
-const selfSchema = z.object({
-  seller_type: z.literal("self_employed"),
-  inn: d(12, "ИНН"),
-}).merge(baseSchema)
-
+const ipSchema = z.object({ seller_type: z.literal("ip"), inn: d(12, "ИНН"), ogrn: d(15, "ОГРНИП") }).merge(baseSchema)
+const oooSchema = z.object({ seller_type: z.literal("ooo"), inn: d(10, "ИНН"), kpp: d(9, "КПП") }).merge(baseSchema)
+const selfSchema = z.object({ seller_type: z.literal("self_employed"), inn: d(12, "ИНН") }).merge(baseSchema)
 const sellerSchema = z.discriminatedUnion("seller_type", [ipSchema, oooSchema, selfSchema])
 type FormData = z.infer<typeof sellerSchema>
 
@@ -131,26 +117,29 @@ export default function SellerRegister() {
   const t = watch("seller_type")
 
   return (
-    <div className="relative min-h-screen" style={{ minHeight: "var(--tg-viewport-stable-height, 100vh)" }}>
+    <div className="fixed inset-0">
       <BubblesBackground />
-      <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center p-4">
-        <Card className="w-full shadow-xl">
+      <div
+        className="grid h-full place-items-center px-4"
+        style={{ height: "var(--tg-viewport-stable-height, 100vh)" }}
+      >
+        <Card className="w-full max-w-[680px] shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Регистрация продавца</CardTitle>
-            <CardDescription>Выберите форму и заполните данные</CardDescription>
+            <CardTitle className="text-2xl md:text-3xl">Регистрация продавца</CardTitle>
+            <CardDescription className="text-base">Выберите форму и заполните данные</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
+            <div className="mb-5">
               <RadioGroup value={type} onValueChange={(v) => setType(v as SellerType)} className="grid grid-cols-3 gap-2">
-                <div className="flex items-center gap-2 rounded-xl border p-3">
+                <div className="flex items-center gap-2 rounded-2xl border p-3">
                   <RadioGroupItem value="ooo" id="ooo" />
                   <Label htmlFor="ooo">ООО</Label>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl border p-3">
+                <div className="flex items-center gap-2 rounded-2xl border p-3">
                   <RadioGroupItem value="ip" id="ip" />
                   <Label htmlFor="ip">ИП</Label>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl border p-3">
+                <div className="flex items-center gap-2 rounded-2xl border p-3">
                   <RadioGroupItem value="self_employed" id="self" />
                   <Label htmlFor="self">Самозанятость</Label>
                 </div>
@@ -167,8 +156,9 @@ export default function SellerRegister() {
                     <>
                       <Input
                         {...field}
+                        className="h-12 text-base"
                         value={useMemo(() => format8(field.value).formatted, [field.value])}
-                        onChange={(e) => setValue("phone", format8(e.target.value).digits)}
+                        onChange={(e) => setValue("phone", format8(e.target.value).digits, { shouldValidate: true })}
                         placeholder="8-900-123-45-67"
                         inputMode="tel"
                         aria-invalid={!!err.phone}
@@ -186,7 +176,7 @@ export default function SellerRegister() {
                   name="organization_name"
                   render={({ field }) => (
                     <>
-                      <Input {...field} aria-invalid={!!err.organization_name} />
+                      <Input {...field} className="h-12 text-base" aria-invalid={!!err.organization_name} />
                       {err.organization_name?.message && <div className="text-xs text-red-600">{err.organization_name.message}</div>}
                     </>
                   )}
@@ -200,7 +190,7 @@ export default function SellerRegister() {
                   name="inn"
                   render={({ field }) => (
                     <>
-                      <Input {...field} inputMode="numeric" aria-invalid={!!err.inn} />
+                      <Input {...field} className="h-12 text-base" inputMode="numeric" aria-invalid={!!err.inn} />
                       {err.inn?.message && <div className="text-xs text-red-600">{err.inn.message}</div>}
                     </>
                   )}
@@ -215,7 +205,7 @@ export default function SellerRegister() {
                     name="ogrn"
                     render={({ field }) => (
                       <>
-                        <Input {...field} inputMode="numeric" aria-invalid={!!err.ogrn} />
+                        <Input {...field} className="h-12 text-base" inputMode="numeric" aria-invalid={!!err.ogrn} />
                         {err.ogrn?.message && <div className="text-xs text-red-600">{err.ogrn.message}</div>}
                       </>
                     )}
@@ -231,7 +221,7 @@ export default function SellerRegister() {
                     name="kpp"
                     render={({ field }) => (
                       <>
-                        <Input {...field} inputMode="numeric" aria-invalid={!!err.kpp} />
+                        <Input {...field} className="h-12 text-base" inputMode="numeric" aria-invalid={!!err.kpp} />
                         {err.kpp?.message && <div className="text-xs text-red-600">{err.kpp.message}</div>}
                       </>
                     )}
@@ -246,7 +236,7 @@ export default function SellerRegister() {
                   name="legal_address"
                   render={({ field }) => (
                     <>
-                      <Input {...field} aria-invalid={!!err.legal_address} />
+                      <Input {...field} className="h-12 text-base" aria-invalid={!!err.legal_address} />
                       {err.legal_address?.message && <div className="text-xs text-red-600">{err.legal_address.message}</div>}
                     </>
                   )}
@@ -260,7 +250,7 @@ export default function SellerRegister() {
                   name="bank_account"
                   render={({ field }) => (
                     <>
-                      <Input {...field} inputMode="numeric" aria-invalid={!!err.bank_account} />
+                      <Input {...field} className="h-12 text-base" inputMode="numeric" aria-invalid={!!err.bank_account} />
                       {err.bank_account?.message && <div className="text-xs text-red-600">{err.bank_account.message}</div>}
                     </>
                   )}
@@ -274,7 +264,7 @@ export default function SellerRegister() {
                   name="correspondent_account"
                   render={({ field }) => (
                     <>
-                      <Input {...field} inputMode="numeric" aria-invalid={!!err.correspondent_account} />
+                      <Input {...field} className="h-12 text-base" inputMode="numeric" aria-invalid={!!err.correspondent_account} />
                       {err.correspondent_account?.message && <div className="text-xs text-red-600">{err.correspondent_account.message}</div>}
                     </>
                   )}
@@ -288,7 +278,7 @@ export default function SellerRegister() {
                   name="bik"
                   render={({ field }) => (
                     <>
-                      <Input {...field} inputMode="numeric" aria-invalid={!!err.bik} />
+                      <Input {...field} className="h-12 text-base" inputMode="numeric" aria-invalid={!!err.bik} />
                       {err.bik?.message && <div className="text-xs text-red-600">{err.bik.message}</div>}
                     </>
                   )}
@@ -302,7 +292,7 @@ export default function SellerRegister() {
                   name="bank_name"
                   render={({ field }) => (
                     <>
-                      <Input {...field} aria-invalid={!!err.bank_name} />
+                      <Input {...field} className="h-12 text-base" aria-invalid={!!err.bank_name} />
                       {err.bank_name?.message && <div className="text-xs text-red-600">{err.bank_name.message}</div>}
                     </>
                   )}
@@ -310,7 +300,7 @@ export default function SellerRegister() {
               </div>
 
               <div className="md:col-span-2">
-                <Button className="h-11 w-full rounded-xl bg-linear-to-r from-emerald-500 to-violet-500 text-white" type="submit">
+                <Button className="h-12 w-full rounded-xl bg-gradient-to-r from-emerald-500 to-violet-500 text-base text-white" type="submit">
                   Завершить регистрацию
                 </Button>
               </div>
