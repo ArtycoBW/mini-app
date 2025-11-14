@@ -1,31 +1,19 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import BubblesBackground from "@/components/BubblesBackground"
-import { token } from "@/lib/api"
-import { useNavigate } from "react-router-dom"
+import { useState, type JSX } from "react"
+import BuyerHome from "@/components/buyer/BuyerHome"
+import BuyerProfile from "@/components/buyer/BuyerProfile"
+import BuyerBottomNav from "@/components/buyer/BuyerBottomNav"
 
-export default function BuyerDashboard() {
-  const nav = useNavigate()
+type BuyerTab = "main" | "profile"
+
+export default function BuyerDashboard(): JSX.Element {
+  const [tab, setTab] = useState<BuyerTab>("main")
+
   return (
-    <div className="relative min-h-screen" style={{ minHeight: "var(--tg-viewport-stable-height, 100vh)" }}>
-      <BubblesBackground />
-      <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center p-4">
-        <Card className="w-full shadow-xl">
-          <CardHeader>
-            <CardTitle>Buyer</CardTitle>
-            <CardDescription>Панель покупателя</CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center gap-3">
-            <Button onClick={() => nav("/seller")} variant="outline">Перейти к Seller</Button>
-            <Button
-              onClick={() => { token.clear(); nav("/auth", { replace: true }) }}
-              className="bg-emerald-600 text-white"
-            >
-              Выйти
-            </Button>
-          </CardContent>
-        </Card>
+    <div className="flex min-h-(--tg-viewport-stable-height,100vh) flex-col bg-linear-to-b from-emerald-50 via-white to-emerald-50 text-slate-900">
+      <div className="flex-1 overflow-y-auto px-3 pb-24 pt-3">
+        {tab === "main" ? <BuyerHome /> : <BuyerProfile />}
       </div>
+      <BuyerBottomNav tab={tab} onChange={setTab} />
     </div>
   )
 }

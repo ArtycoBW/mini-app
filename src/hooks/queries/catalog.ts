@@ -1,24 +1,18 @@
-import { useQuery } from "@tanstack/react-query"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Category } from "@/hooks/queries/categories"
 import { http } from "@/lib/api"
+import { useQuery } from "@tanstack/react-query"
 
-export type Category = {
-  id: number
-  name: string
-  slug: string
-  description: string
-  parent_id: number | null
+export type ProductImage = {
+  id?: number
+  image_url: string
   sort_order: number
-  is_active: boolean
-  created_at: string
-  updated_at: string
 }
-
-export type ProductImage = { url: string; id?: number }
 
 export type Product = {
   id: number
   category_id: number
-  subcategory_id: number
+  subcategory_id: number | null
   seller_id: number
   marketplace: string
   article: string
@@ -29,7 +23,7 @@ export type Product = {
   cashback_amount: number
   buyer_price: number
   purchase_instruction: string
-  return_type: "returnable" | "non_returnable" | string
+  return_type: string
   return_days: number
   is_active: boolean
   payment_id: string | null
@@ -40,25 +34,33 @@ export type Product = {
   created_at: string
   updated_at: string
   images: ProductImage[]
-  category: Category
-  subcategory: Category
+  category?: Category
+  subcategory?: Category
 }
 
-export type ApiError422 = { detail: Array<{ loc: (string | number)[]; msg: string; type: string }> }
-
-export type CatalogSearchParams = {
-  query?: string
-  marketplace?: string
+export type CatalogSearchFilters = {
   category_id?: number
   subcategory_id?: number
+  marketplace?: string
   min_price?: number
   max_price?: number
-  page?: number
-  page_size?: number
-  [key: string]: unknown
+  min_cashback_percent?: number
+  max_cashback_percent?: number
+  only_active?: boolean
 }
 
-export type CatalogSearchResp = {
+export type CatalogSortOrder = "asc" | "desc"
+
+export type CatalogSearchRequest = {
+  query?: string
+  filters?: CatalogSearchFilters
+  page?: number
+  page_size?: number
+  sort_by?: string
+  sort_order?: CatalogSortOrder
+}
+
+export type CatalogSearchResponse = {
   products: Product[]
   total: number
   page: number
@@ -66,15 +68,15 @@ export type CatalogSearchResp = {
   total_pages: number
 }
 
-export const useCatalogSearch = (params: CatalogSearchParams) =>
-  useQuery<CatalogSearchResp, ApiError422>({
+export const useCatalogSearch = (params: CatalogSearchRequest) =>
+  useQuery<CatalogSearchResponse, any>({
     queryKey: ["catalog-search", params],
-    queryFn: () => http.get<CatalogSearchResp>("/api/catalog/search", { params }),
+    queryFn: () => http.post<CatalogSearchResponse, CatalogSearchRequest>("/api/catalog/search", params),
   })
 
-export const useProduct = (productId?: number, enabled = true) =>
-  useQuery<Product, ApiError422>({
-    queryKey: ["product", productId],
+export const useCatalogProduct = (productId?: number) =>
+  useQuery<Product, any>({
+    queryKey: ["catalog-product", productId],
     queryFn: () => http.get<Product>(`/api/catalog/${productId}`),
-    enabled: Boolean(productId) && enabled,
+    enabled: Boolean(productId),
   })

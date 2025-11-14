@@ -110,7 +110,7 @@ export default function SellerRegister() {
         terms_accepted: true,
       })
     }
-    nav("/seller/onboarding", { replace: true })
+    nav("/seller", { replace: true })
   }
 
   const err = formState.errors as any

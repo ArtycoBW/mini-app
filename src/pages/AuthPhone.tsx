@@ -56,7 +56,7 @@ export default function AuthScreen() {
       else nav("/register/buyer", { replace: true })
       return
     }
-    nav(d.role === "seller" ? "/seller/home" : "/buyer/home", { replace: true })
+    nav(d.role === "seller" ? "/seller" : "/buyer", { replace: true })
   }
 
   const err = formState.errors as any
